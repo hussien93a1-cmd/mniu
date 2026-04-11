@@ -576,9 +576,18 @@ document.addEventListener('DOMContentLoaded', function () {
   function sendOrder(){
     if (!cart.length) { alert('السلة فارغة'); return; }
     if (!validateCustomer()) { openCart(); return; }
+
     const text = buildWhatsAppMessage(cart);
-    const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
-    window.open(url, '_blank');
+    const encodedText = encodeURIComponent(text);
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const url = isMobile
+      ? 'https://wa.me/' + phone + '?text=' + encodedText
+      : 'https://api.whatsapp.com/send?phone=' + phone + '&text=' + encodedText;
+
+    const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!newWindow) {
+      window.location.href = url;
+    }
   }
 
   searchInput.addEventListener('input', function(){ searchTerm = searchInput.value.trim(); renderProducts(); saveState(); });
