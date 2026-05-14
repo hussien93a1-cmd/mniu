@@ -20,6 +20,15 @@
         @keyframes item-pop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         .animate-bounce-subtle { animation: bounce-subtle 3s infinite; }
         @keyframes bounce-subtle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        .deera-offer-card { position: relative; overflow: hidden; border-radius: 2rem; padding: 1.25rem; color: white; background: radial-gradient(circle at 20% 10%, rgba(250,204,21,.38), transparent 25%), radial-gradient(circle at 90% 80%, rgba(249,115,22,.28), transparent 28%), linear-gradient(145deg, #0c0a09 0%, #1c1917 50%, #030712 100%); border: 2px solid rgba(250,204,21,.7); box-shadow: 0 0 28px rgba(249,115,22,.48), 0 22px 55px rgba(0,0,0,.35); animation: offerIn .45s ease both; }
+        .deera-offer-card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, transparent, rgba(255,255,255,.12), transparent); transform: translateX(100%); animation: offerShine 3.5s ease-in-out infinite; }
+        .deera-offer-card::after { content: "🔥"; position: absolute; left: 12px; top: 85px; font-size: 8rem; opacity: .08; transform: rotate(-14deg); }
+        .offer-pill { display: inline-flex; align-items: center; gap: .35rem; border-radius: 999px; padding: .45rem .75rem; font-size: .75rem; font-weight: 900; }
+        .offer-line { display: flex; justify-content: space-between; align-items: center; padding: .85rem 1rem; border-radius: 1.25rem; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.12); font-weight: 900; }
+        .offer-btn { transition: transform .15s ease, filter .15s ease; }
+        .offer-btn:active { transform: scale(.97); filter: brightness(.95); }
+        @keyframes offerIn { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes offerShine { 0%, 70% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
     </style>
 </head>
 <body class="grid-bg">
@@ -34,7 +43,7 @@
         };
 
         const WHATSAPP_NUMBER = "9647838468817";
-        const DELIVERY_FEE = 0;
+        const DELIVERY_FEE = 1000;
         const CURRENCY = "د.ع";
         
         const STORAGE_CART_KEY = "kd_customer_cart";
@@ -51,6 +60,7 @@
 
         const MENU_DATA = {
             categories: [
+                { id: 'offers', name: '🔥 عروض الديرة', details: 'عروض خاصة ومميزة', icon: 'badge-percent', special: true },
                 { id: 'nafarat', name: 'قسم النفرات', details: 'مشويات طازجة يومياً', icon: 'flame' },
                 { id: 'weight', name: 'قسم كباب الوزن', details: 'لحم غنم عراقي أصيل', icon: 'package' },
                 { id: 'sandwiches', name: 'قسم الساندويش', details: 'وجبات سريعة وخفيفة', icon: 'utensils' },
@@ -58,6 +68,9 @@
                 { id: 'extras', name: 'إضافات أخرى', details: 'مقبلات وصمون حار', icon: 'plus' },
             ],
             items: [
+                { id: 'offer1', categoryId: 'offers', name: 'عرض الديرة الخاص', isOffer: true, oldPrice: 40000, save: 5000, details: ['2 نفر كباب لحم', '1 نفر تكه لحم', '1 نفر تكه دجاج'], options: [
+                    { id: 'offer1_main', name: 'عرض الديرة الخاص', price: 35000 }
+                ]},
                 { id: 'n1', categoryId: 'nafarat', name: 'كباب لحم', options: [
                     { id: 'o1_1', name: 'شيش كباب لحم', price: 2500 },
                     { id: 'o1_2', name: 'نص نفر كباب لحم', price: 5000 },
@@ -180,6 +193,26 @@
 
             const visibleCategories = MENU_DATA.categories.filter(cat => !(orderType === 'dinein' && cat.id === 'weight'));
 
+            const getDiscountPercent = (oldPrice, newPrice) => {
+                if (!oldPrice || !newPrice) return 0;
+                return ((oldPrice - newPrice) / oldPrice * 100).toFixed(1);
+            };
+
+            const sendOfferToWhatsApp = (item) => {
+                const newPrice = item.options[0].price;
+                const discount = getDiscountPercent(item.oldPrice, newPrice);
+                const message = `🍢 *عرض الديرة الخاص*
+
+* 2 نفر كباب لحم
+* 1 نفر تكه لحم
+* 1 نفر تكه دجاج
+
+💰 السعر: ${newPrice.toLocaleString()} د.ع
+🔥 الخصم: ${discount}%
+💵 التوفير: ${item.save.toLocaleString()} د.ع`;
+                window.location.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+            };
+
             const handleOrderTypeChange = (type) => {
                 setOrderType(type);
                 if (type !== 'dinein') setTableNumber('');
@@ -205,7 +238,11 @@
                         name: item.name, 
                         optionName: option.name, 
                         price: option.price, 
-                        quantity: 1 
+                        quantity: 1,
+                        isOffer: !!item.isOffer,
+                        offerDetails: item.details || [],
+                        oldPrice: item.oldPrice || null,
+                        save: item.save || null
                     }]);
                 }
                 setLastAddedId(option.id);
@@ -269,8 +306,28 @@
                 message += `\n👤 *الاسم:* ${customerInfo.name}\n`;
                 message += `📞 *رقم الهاتف:* ${customerInfo.phone}\n\n`;
 
+                const offerOrders = cart.filter(i => i.categoryId === 'offers');
                 const mainOrders = cart.filter(i => ['nafarat', 'weight', 'sandwiches'].includes(i.categoryId));
                 const extraOrders = cart.filter(i => ['drinks', 'extras'].includes(i.categoryId));
+
+                if (offerOrders.length > 0) {
+                    message += `━━━━━━━━━━━━━━
+🔥 *العروض:*
+━━━━━━━━━━━━━━
+`;
+                    offerOrders.forEach(item => {
+                        message += `▪️ *${item.name}* × ${item.quantity} = ${(item.price * item.quantity).toLocaleString()} ${CURRENCY}
+`;
+                        if (item.offerDetails && item.offerDetails.length) {
+                            item.offerDetails.forEach(detail => { message += `   - ${detail}
+`; });
+                            message += `   💰 السعر: 35000 د.ع
+   🔥 الخصم: 12.5%
+   💵 التوفير: 5000 د.ع
+`;
+                        }
+                    });
+                }
 
                 if (mainOrders.length > 0) {
                     message += `━━━━━━━━━━━━━━\n🍽️ *الطلبات:*\n━━━━━━━━━━━━━━\n`;
@@ -288,7 +345,8 @@
 
                 message += `\n━━━━━━━━━━━━━━\n`;
                 message += `💵 *مجموع الطلب:* ${subtotal.toLocaleString()} ${CURRENCY}\n`;
-                if (orderType === 'delivery') message += `🚚 *التوصيل:* مجاني داخل الحرية\n`;
+                if (orderType === 'delivery') message += `🚚 *أجور التوصيل:* ${deliveryFee.toLocaleString()} ${CURRENCY}
+`;
                 message += `💰 *المجموع الكلي:* ${total.toLocaleString()} ${CURRENCY}\n`;
                 message += `━━━━━━━━━━━━━━\n\n`;
                 message += `🙏 *شكراً لطلبكم من كباب الديرة*\nنتمنى لكم وجبة شهية ❤️`;
@@ -306,6 +364,10 @@
                 <div className="min-h-screen text-stone-900 pb-32" dir="rtl">
                     {currentView !== 'orderType' && <header className="sticky top-0 z-[60] bg-gradient-to-r from-orange-500 to-yellow-500 text-white p-4 shadow-xl flex items-center justify-between">
                         <div className="flex items-center gap-3">
+                            <button onClick={() => setCurrentView('orderType')} className="bg-white text-orange-600 px-4 py-2 rounded-2xl font-black text-sm shadow-lg flex items-center gap-2 active:scale-95 transition-all">
+                                <Icon name="arrow-right" className="w-4 h-4" />
+                                البداية
+                            </button>
                             <button onClick={() => setIsSideMenuOpen(true)} className="p-2 bg-white/20 rounded-xl"><Icon name="menu" /></button>
                             <h1 onClick={() => setCurrentView('orderType')} className="font-black text-2xl tracking-tighter cursor-pointer">كباب الديرة</h1>
                         </div>
@@ -399,12 +461,12 @@
                                 <h2 className="text-xl font-black border-r-4 border-orange-500 pr-3 mb-6">القائمة</h2>
                                 <div className="grid grid-cols-2 gap-4">
                                     {visibleCategories.map((cat) => (
-                                        <button key={cat.id} onClick={() => { setSelectedCategory(cat); setCurrentView('items'); }} className="bg-white rounded-[2rem] p-5 shadow-sm border border-orange-50 flex flex-col items-center text-center active:scale-95 transition-all group">
-                                            <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300">
+                                        <button key={cat.id} onClick={() => { setSelectedCategory(cat); setCurrentView('items'); }} className={`${cat.special ? 'bg-gradient-to-br from-orange-500 to-yellow-400 text-white border-yellow-300 shadow-xl' : 'bg-white border-orange-50'} rounded-[2rem] p-5 shadow-sm border flex flex-col items-center text-center active:scale-95 transition-all group`}>
+                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-colors duration-300 ${cat.special ? 'bg-white/25 text-white' : 'bg-orange-50 group-hover:bg-orange-500 group-hover:text-white'}`}>
                                                 <Icon name={cat.icon} className="w-7 h-7 text-orange-500 group-hover:text-white" />
                                             </div>
-                                            <h3 className="font-bold text-sm text-stone-800">{cat.name}</h3>
-                                            <p className="text-[10px] text-stone-400 mt-1">{cat.details}</p>
+                                            <h3 className={`font-bold text-sm ${cat.special ? 'text-white' : 'text-stone-800'}`}>{cat.name}</h3>
+                                            <p className={`text-[10px] mt-1 ${cat.special ? 'text-white/90' : 'text-stone-400'}`}>{cat.details}</p>
                                         </button>
                                     ))}
                                 </div>
@@ -420,13 +482,62 @@
                                 </div>
                                 <div className="grid grid-cols-1 gap-4">
                                     {MENU_DATA.items.filter(item => item.categoryId === selectedCategory.id).map(item => (
-                                        <div key={item.id} onClick={() => setSelectedItem(item)} className="bg-white rounded-3xl p-5 shadow-sm border border-stone-100 flex items-center justify-between active:bg-orange-50 transition-all cursor-pointer">
-                                            <div className="flex-1">
-                                                <h3 className="font-black text-lg text-stone-800">{item.name}</h3>
-                                                <p className="text-stone-400 text-xs mt-1">اضغط لاختيار النوع والسعر</p>
+                                        item.isOffer ? (
+                                            <div key={item.id} className="deera-offer-card">
+                                                <div className="relative z-10">
+                                                    <div className="flex items-start justify-between gap-3 mb-4">
+                                                        <div>
+                                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                                <span className="offer-pill bg-red-600 text-white">Best Seller</span>
+                                                                <span className="offer-pill bg-yellow-400 text-stone-950">🔥 خصم {getDiscountPercent(item.oldPrice, item.options[0].price)}%</span>
+                                                            </div>
+                                                            <h3 className="text-3xl font-black text-yellow-300 leading-tight">🔥 عرض الديرة الخاص 🔥</h3>
+                                                            <p className="text-yellow-100 text-sm font-black mt-2">⏳ لفترة محدودة</p>
+                                                        </div>
+                                                        <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center text-4xl shadow-[0_0_28px_rgba(250,204,21,.45)]">🔥</div>
+                                                    </div>
+
+                                                    <div className="h-28 rounded-[1.6rem] mb-4 overflow-hidden border border-yellow-300/30 bg-[radial-gradient(circle_at_30%_30%,rgba(250,204,21,.45),transparent_18%),radial-gradient(circle_at_70%_70%,rgba(249,115,22,.35),transparent_22%),linear-gradient(135deg,#292524,#0c0a09)] flex items-center justify-center">
+                                                        <div className="text-center">
+                                                            <div className="text-5xl mb-1">🥩🔥🍢</div>
+                                                            <p className="text-yellow-200 text-xs font-black">مشاوي وفحم ونار</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2 mb-4">
+                                                        {item.details.map((detail, idx) => (
+                                                            <div key={idx} className="offer-line"><span className="text-yellow-300">✓</span><span>{detail}</span></div>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-2 mb-4 text-xs font-black">
+                                                        <div className="bg-white/10 border border-white/10 rounded-2xl p-3">✅ يكفي 3 إلى 4 أشخاص</div>
+                                                        <div className="bg-white/10 border border-white/10 rounded-2xl p-3">✅ مناسب للعائلة أو الشباب</div>
+                                                        <div className="bg-white/10 border border-white/10 rounded-2xl p-3">✅ يشمل أفضل المشاوي</div>
+                                                        <div className="bg-white/10 border border-white/10 rounded-2xl p-3">💰 وفر {item.save.toLocaleString()} د.ع</div>
+                                                    </div>
+
+                                                    <div className="bg-yellow-400/10 border border-yellow-300/40 rounded-[1.7rem] p-5 text-center mb-4">
+                                                        <div className="text-orange-200 text-2xl font-black line-through decoration-red-500 decoration-4">{item.oldPrice.toLocaleString()} د.ع</div>
+                                                        <div className="text-yellow-300 text-5xl font-black drop-shadow-[0_0_16px_rgba(250,204,21,.45)]">{item.options[0].price.toLocaleString()} د.ع</div>
+                                                        <div className="inline-block bg-yellow-400 text-stone-950 px-4 py-2 rounded-full font-black mt-3">💰 وفر {item.save.toLocaleString()} د.ع</div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 gap-3">
+                                                        <button onClick={() => addToCart(item, item.options[0])} className="offer-btn w-full bg-yellow-400 text-stone-950 font-black py-5 rounded-2xl shadow-xl">إضافة العرض إلى السلة</button>
+                                                        <button onClick={() => sendOfferToWhatsApp(item)} className="offer-btn w-full bg-green-600 text-white font-black py-5 rounded-2xl shadow-xl">اطلب الآن عبر واتساب</button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg"><Icon name="plus" className="w-5 h-5" /></div>
-                                        </div>
+                                        ) : (
+                                            <div key={item.id} onClick={() => setSelectedItem(item)} className="bg-white rounded-3xl p-5 shadow-sm border border-stone-100 flex items-center justify-between active:bg-orange-50 transition-all cursor-pointer">
+                                                <div className="flex-1">
+                                                    <h3 className="font-black text-lg text-stone-800">{item.name}</h3>
+                                                    <p className="text-stone-400 text-xs mt-1">اضغط لاختيار النوع والسعر</p>
+                                                </div>
+                                                <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg"><Icon name="plus" className="w-5 h-5" /></div>
+                                            </div>
+                                        )
                                     ))}
                                 </div>
                             </div>
