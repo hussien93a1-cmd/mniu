@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منيو كباب الديرة - طلبات الواتساب</title>
+    <title>كباب الديرة - المنيو الذكي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -11,20 +11,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .animate-bounce-subtle { animation: bounce-subtle 3s infinite; }
-        @keyframes bounce-subtle { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -10px); } }
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        body { font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #fffbeb; }
+        .hero-yellow-gradient { background: linear-gradient(135deg, rgba(251, 191, 36, 0.95) 0%, rgba(245, 158, 11, 0.9) 100%); }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .cart-bar-shadow { box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.1), 0 -8px 10px -6px rgba(0, 0, 0, 0.1); }
         .grid-bg { background-image: radial-gradient(#fbbf24 0.5px, transparent 0.5px); background-size: 15px 15px; }
-        .success-overlay { animation: fadeIn 0.5s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .add-item-pop { animation: item-pop 0.3s ease-out; }
+        @keyframes item-pop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .animate-bounce-subtle { animation: bounce-subtle 3s infinite; }
+        @keyframes bounce-subtle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
     </style>
 </head>
-<body class="bg-stone-50 grid-bg">
+<body class="grid-bg">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect } = React;
 
         const Icon = ({ name, className = "w-6 h-6" }) => {
             useEffect(() => { lucide.createIcons(); }, [name]);
@@ -32,112 +34,182 @@
         };
 
         const WHATSAPP_NUMBER = "9647838468817";
-        const DELIVERY_FEE = 1000;
+        const DELIVERY_FEE = 0;
         const CURRENCY = "د.ع";
+        
         const STORAGE_CART_KEY = "kd_customer_cart";
         const STORAGE_USER_KEY = "kd_customer_data";
         const STORAGE_HISTORY_KEY = "kd_order_history";
+        const STORAGE_ORDER_TYPE_KEY = "kd_order_type";
+        const STORAGE_TABLE_KEY = "kd_table_number";
+
+        const ORDER_TYPES = {
+            takeaway: { label: "سفري", icon: "shopping-bag" },
+            dinein: { label: "تناول في المطعم", icon: "armchair" },
+            delivery: { label: "دلفري / توصيل", icon: "bike" }
+        };
 
         const MENU_DATA = {
             categories: [
                 { id: 'nafarat', name: 'قسم النفرات', details: 'مشويات طازجة يومياً', icon: 'flame' },
                 { id: 'weight', name: 'قسم كباب الوزن', details: 'لحم غنم عراقي أصيل', icon: 'package' },
-                { id: 'sandwiches', name: 'الساندويش / اللفات', details: 'وجبات سريعة وخفيفة', icon: 'utensils' },
+                { id: 'sandwiches', name: 'قسم الساندويش', details: 'وجبات سريعة وخفيفة', icon: 'utensils' },
                 { id: 'drinks', name: 'المشروبات الباردة', details: 'عصائر ومشروبات غازية', icon: 'coffee' },
                 { id: 'extras', name: 'إضافات أخرى', details: 'مقبلات وصمون حار', icon: 'plus' },
             ],
             items: [
-                { id: 'n1', categoryId: 'nafarat', name: 'كباب لحم', description: 'لحم طازج مشوي على الفحم', options: [
+                { id: 'n1', categoryId: 'nafarat', name: 'كباب لحم', options: [
                     { id: 'o1_1', name: 'شيش كباب لحم', price: 2500 },
                     { id: 'o1_2', name: 'نص نفر كباب لحم', price: 5000 },
                     { id: 'o1_3', name: 'نفر كباب لحم', price: 10000 },
                 ]},
-                { id: 'n2', categoryId: 'nafarat', name: 'تكه لحم', description: 'قطع لحم الغنم الفاخرة', options: [
+                { id: 'n2', categoryId: 'nafarat', name: 'تكه لحم', options: [
                     { id: 'o2_1', name: 'شيش تكه لحم', price: 3000 },
                     { id: 'o2_2', name: 'نص نفر تكه لحم', price: 6000 },
                     { id: 'o2_3', name: 'نفر تكه لحم', price: 10000 },
                 ]},
-                { id: 'n3', categoryId: 'nafarat', name: 'معلاك', description: 'معلاك طازج مشوي يومياً', options: [
+                { id: 'n3', categoryId: 'nafarat', name: 'معلاك', options: [
                     { id: 'o3_1', name: 'شيش معلاك', price: 3000 },
                     { id: 'o3_2', name: 'نص نفر معلاك', price: 6000 },
                     { id: 'o3_3', name: 'نفر معلاك', price: 12000 },
                 ]},
-                { id: 'n4', categoryId: 'nafarat', name: 'تكه دجاج', description: 'صدور دجاج متبلة بخلطة الديرة', options: [
+                { id: 'n4', categoryId: 'nafarat', name: 'تكه دجاج', options: [
                     { id: 'o4_1', name: 'شيش تكه دجاج', price: 2000 },
-                    { id: 'o4_2', name: 'نص نفر تكه دجاج', price: 4000 },
+                    { id: 'o4_2', name: 'نص تكه دجاج', price: 4000 },
                     { id: 'o4_3', name: 'نفر تكه دجاج', price: 8000 },
                 ]},
-                { id: 'n5', categoryId: 'nafarat', name: 'كباب دجاج', description: 'كباب دجاج متبل بالتوابل الخاصة', options: [
+                { id: 'n5', categoryId: 'nafarat', name: 'كباب دجاج', options: [
                     { id: 'o5_1', name: 'شيش كباب دجاج', price: 2000 },
                     { id: 'o5_2', name: 'نص نفر كباب دجاج', price: 4000 },
                     { id: 'o5_3', name: 'نفر كباب دجاج', price: 8000 },
                 ]},
                 { id: 'w1', categoryId: 'weight', name: 'كباب لحم بالوزن', options: [
                     { id: 'ow1_1', name: '1 كيلو كباب لحم', price: 24000 },
+                    { id: 'ow1_4', name: '¾ كيلو كباب لحم', price: 18000 },
                     { id: 'ow1_2', name: 'نصف كيلو كباب لحم', price: 12000 },
                     { id: 'ow1_3', name: 'نصف كيلو كباب مشكل', price: 10000 },
                 ]},
                 { id: 'w2', categoryId: 'weight', name: 'كباب دجاج بالوزن', options: [
                     { id: 'ow2_1', name: '1 كيلو كباب دجاج', price: 14000 },
+                    { id: 'ow2_3', name: '¾ كيلو كباب دجاج', price: 10500 },
                     { id: 'ow2_2', name: 'نصف كيلو كباب دجاج', price: 7000 },
                 ]},
-                { id: 's1', categoryId: 'sandwiches', name: 'لفة كباب لحم', options: [{ id: 'os1', name: 'لفة كباب لحم', price: 2500 }]},
-                { id: 's2', categoryId: 'sandwiches', name: 'لفة تكه لحم', options: [{ id: 'os2', name: 'لفة تكه لحم', price: 2500 }]},
-                { id: 's3', categoryId: 'sandwiches', name: 'لفة معلاك', options: [{ id: 'os3', name: 'لفة معلاك', price: 2500 }]},
-                { id: 's4', categoryId: 'sandwiches', name: 'لفة تكه دجاج', options: [{ id: 'os4', name: 'لفة تكه دجاج', price: 2000 }]},
-                { id: 's5', categoryId: 'sandwiches', name: 'لفة كباب دجاج', options: [{ id: 'os5', name: 'لفة كباب دجاج', price: 1500 }]},
-                { id: 'd1', categoryId: 'drinks', name: 'كولا', options: [{ id: 'od1', name: 'كولا باردة', price: 500 }]},
-                { id: 'd2', categoryId: 'drinks', name: 'سبرايت', options: [{ id: 'od2', name: 'سبرايت بارد', price: 500 }]},
-                { id: 'd3', categoryId: 'drinks', name: 'فانتا', options: [{ id: 'od3', name: 'فانتا بارد', price: 500 }]},
-                { id: 'd4', categoryId: 'drinks', name: 'لبن', options: [{ id: 'od4', name: 'لبن أربيل', price: 500 }]},
-                { id: 'd5', categoryId: 'drinks', name: 'ماء', options: [{ id: 'od5', name: 'ماء معدني', price: 500 }]},
-                { id: 'e1', categoryId: 'extras', name: 'صمون عدد 6', options: [{ id: 'oe1', name: 'وجبة صمون فرنسي', price: 1000 }]},
-                { id: 'e2', categoryId: 'extras', name: 'ببسي كبير', options: [{ id: 'oe2', name: 'ببسي عائلي', price: 1500 }]},
-                { id: 'e3', categoryId: 'extras', name: 'صحن مقبلات', options: [{ id: 'oe3', name: 'مقبلات مشكلة', price: 1000 }]},
+                { id: 's1', categoryId: 'sandwiches', name: 'لفة كباب لحم', options: [
+                    { id: 'os1_1', name: 'عادي', price: 2500 },
+                    { id: 'os1_2', name: 'دبل', price: 5000 }
+                ]},
+                { id: 's2', categoryId: 'sandwiches', name: 'لفة تكه لحم', options: [
+                    { id: 'os2_1', name: 'عادي', price: 2500 },
+                    { id: 'os2_2', name: 'دبل', price: 5000 }
+                ]},
+                { id: 's3', categoryId: 'sandwiches', name: 'لفة معلاك', options: [
+                    { id: 'os3_1', name: 'عادي', price: 2500 },
+                    { id: 'os3_2', name: 'دبل', price: 5000 }
+                ]},
+                { id: 's4', categoryId: 'sandwiches', name: 'لفة تكه دجاج', options: [
+                    { id: 'os4_1', name: 'عادي', price: 2000 },
+                    { id: 'os4_2', name: 'دبل', price: 4000 }
+                ]},
+                { id: 's5', categoryId: 'sandwiches', name: 'لفة كباب دجاج', options: [
+                    { id: 'os5_1', name: 'عادي', price: 1500 },
+                    { id: 'os5_2', name: 'دبل', price: 3000 }
+                ]},
+                { id: 'd1', categoryId: 'drinks', name: 'كولا', options: [{ id: 'od1', name: 'عادي', price: 500 }]},
+                { id: 'd2', categoryId: 'drinks', name: 'سبرايت', options: [{ id: 'od2', name: 'عادي', price: 500 }]},
+                { id: 'd3', categoryId: 'drinks', name: 'فانتا', options: [{ id: 'od3', name: 'عادي', price: 500 }]},
+                { id: 'd4', categoryId: 'drinks', name: 'لبن', options: [{ id: 'od4', name: 'عادي', price: 500 }]},
+                { id: 'd5', categoryId: 'drinks', name: 'ماء', options: [{ id: 'od5', name: 'عادي', price: 500 }]},
+                { id: 'e1', categoryId: 'extras', name: 'صمون عدد 6', options: [{ id: 'oe1', name: 'عادي', price: 1000 }]},
+                { id: 'e2', categoryId: 'extras', name: 'ببسي كبير', options: [{ id: 'oe2', name: 'عادي', price: 1500 }]},
+                { id: 'e3', categoryId: 'extras', name: 'صحن مقبلات', options: [{ id: 'oe3', name: 'عادي', price: 1000 }]},
             ]
         };
 
         const App = () => {
-            const [currentView, setCurrentView] = useState('categories');
+            const [currentView, setCurrentView] = useState('orderType');
             const [selectedCategory, setSelectedCategory] = useState(null);
             const [selectedItem, setSelectedItem] = useState(null);
             const [isCartOpen, setIsCartOpen] = useState(false);
+            const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
             const [orderSuccess, setOrderSuccess] = useState(false);
+            const [lastAddedId, setLastAddedId] = useState(null);
 
-            // استعادة السلة
+            const [orderType, setOrderType] = useState(() => localStorage.getItem(STORAGE_ORDER_TYPE_KEY) || 'takeaway');
+            const [tableNumber, setTableNumber] = useState(() => localStorage.getItem(STORAGE_TABLE_KEY) || '');
+
             const [cart, setCart] = useState(() => {
-                const saved = localStorage.getItem(STORAGE_CART_KEY);
-                return saved ? JSON.parse(saved) : [];
+                try {
+                    const saved = localStorage.getItem(STORAGE_CART_KEY);
+                    return saved ? JSON.parse(saved) : [];
+                } catch (e) { return []; }
             });
 
-            // استعادة بيانات الزبون (الاسم، الهاتف، العنوان)
             const [customerInfo, setCustomerInfo] = useState(() => {
-                const saved = localStorage.getItem(STORAGE_USER_KEY);
-                return saved ? JSON.parse(saved) : { name: '', phone: '', address: '' };
+                try {
+                    const saved = localStorage.getItem(STORAGE_USER_KEY);
+                    return saved ? JSON.parse(saved) : { name: '', phone: '', address: '' };
+                } catch (e) { return { name: '', phone: '', address: '' }; }
             });
 
-            // استعادة سجل الطلبات
             const [orderHistory, setOrderHistory] = useState(() => {
-                const saved = localStorage.getItem(STORAGE_HISTORY_KEY);
-                return saved ? JSON.parse(saved) : [];
+                try {
+                    const saved = localStorage.getItem(STORAGE_HISTORY_KEY);
+                    return saved ? JSON.parse(saved) : [];
+                } catch (e) { return []; }
             });
 
             useEffect(() => { localStorage.setItem(STORAGE_CART_KEY, JSON.stringify(cart)); }, [cart]);
             useEffect(() => { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(customerInfo)); }, [customerInfo]);
             useEffect(() => { localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(orderHistory)); }, [orderHistory]);
+            useEffect(() => { localStorage.setItem(STORAGE_ORDER_TYPE_KEY, orderType); }, [orderType]);
+            useEffect(() => { localStorage.setItem(STORAGE_TABLE_KEY, tableNumber); }, [tableNumber]);
+
+            useEffect(() => {
+                if (orderType === 'dinein') {
+                    setCart(prev => prev.filter(item => item.categoryId !== 'weight'));
+                    if (selectedCategory && selectedCategory.id === 'weight') {
+                        setSelectedCategory(null);
+                        setCurrentView('categories');
+                    }
+                }
+            }, [orderType]);
 
             const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const total = subtotal > 0 ? subtotal + DELIVERY_FEE : 0;
+            const deliveryFee = orderType === 'delivery' ? DELIVERY_FEE : 0;
+            const total = subtotal + deliveryFee;
+
+            const visibleCategories = MENU_DATA.categories.filter(cat => !(orderType === 'dinein' && cat.id === 'weight'));
+
+            const handleOrderTypeChange = (type) => {
+                setOrderType(type);
+                if (type !== 'dinein') setTableNumber('');
+                setCurrentView('categories');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
 
             const addToCart = (item, option) => {
+                if (orderType === 'dinein' && item.categoryId === 'weight') {
+                    alert('قسم كباب الوزن غير متوفر في طلبات الصالة');
+                    return;
+                }
                 const cartItemId = `${item.id}-${option.id}`;
                 const existing = cart.find(i => i.cartId === cartItemId);
                 if (existing) {
                     setCart(cart.map(i => i.cartId === cartItemId ? { ...i, quantity: i.quantity + 1 } : i));
                 } else {
-                    setCart([...cart, { cartId: cartItemId, itemId: item.id, optionId: option.id, name: item.name, optionName: option.name, price: option.price, quantity: 1 }]);
+                    setCart([...cart, { 
+                        cartId: cartItemId, 
+                        itemId: item.id, 
+                        categoryId: item.categoryId,
+                        optionId: option.id, 
+                        name: item.name, 
+                        optionName: option.name, 
+                        price: option.price, 
+                        quantity: 1 
+                    }]);
                 }
-                setSelectedItem(null);
+                setLastAddedId(option.id);
+                setTimeout(() => setLastAddedId(null), 300);
             };
 
             const updateQuantity = (cartId, delta) => {
@@ -151,94 +223,185 @@
             };
 
             const sendToWhatsApp = () => {
-                if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) {
-                    // بدلاً من alert ننتقل لصفحة الإدخال
-                    setCurrentView('checkout');
+                if (!customerInfo.name.trim() || !customerInfo.phone.trim()) {
+                    alert('الرجاء إدخال الاسم ورقم الهاتف');
+                    return;
+                }
+                if (orderType === 'dinein' && !tableNumber) {
+                    alert('الرجاء اختيار رقم الطاولة.');
+                    return;
+                }
+                if (orderType === 'delivery' && !customerInfo.address.trim()) {
+                    alert('الرجاء إدخال العنوان.');
+                    return;
+                }
+                if (cart.length === 0) {
+                    alert('السلة فارغة، الرجاء إضافة أصناف أولاً');
                     return;
                 }
 
-                // إضافة الطلب للسجل
-                const historyEntry = {
-                    id: Date.now(),
-                    date: new Date().toLocaleDateString('ar-IQ'),
-                    time: new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }),
-                    items: [...cart],
-                    total: total
+                const orderId = Math.floor(Math.random() * 9000) + 1000;
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('ar-IQ');
+                const timeStr = now.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' });
+
+                const historyEntry = { 
+                    id: orderId, 
+                    date: dateStr, 
+                    time: timeStr, 
+                    orderType,
+                    tableNumber: orderType === 'dinein' ? tableNumber : '',
+                    address: orderType === 'delivery' ? customerInfo.address : '',
+                    items: [...cart], 
+                    subtotal,
+                    deliveryFee,
+                    total
                 };
-                
-                const newHistory = [historyEntry, ...orderHistory].slice(0, 15);
-                setOrderHistory(newHistory);
+                setOrderHistory([historyEntry, ...orderHistory]);
 
-                // بناء الرسالة
-                let message = `*طلب جديد من كباب الديرة*\n\n`;
-                message += `👤 *الزبون:* ${customerInfo.name}\n`;
-                message += `📞 *الهاتف:* ${customerInfo.phone}\n`;
-                message += `📍 *العنوان:* ${customerInfo.address}\n\n`;
-                message += `🛒 *تفاصيل الطلب:*\n`;
-                cart.forEach(item => {
-                    message += `- ${item.name} (${item.optionName})\n`;
-                    message += `  الكمية: ${item.quantity} × ${item.price.toLocaleString()} ${CURRENCY}\n`;
-                });
-                message += `\n--------------------------\n`;
-                message += `💰 المجموع: ${subtotal.toLocaleString()} ${CURRENCY}\n`;
-                message += `🚚 التوصيل: ${DELIVERY_FEE.toLocaleString()} ${CURRENCY}\n`;
-                message += `✅ *الإجمالي النهائي: ${total.toLocaleString()} ${CURRENCY}*`;
+                let message = `🍢 *كباب الديرة*\n`;
+                message += `🧾 *رقم الطلب:* #${orderId}\n`;
+                message += `🕒 *الوقت:* ${timeStr}\n`;
+                message += `📅 *التاريخ:* ${dateStr}\n\n`;
+                message += `🧾 *نوع الطلب:* ${ORDER_TYPES[orderType].label}\n`;
+                if (orderType === 'dinein') message += `🪑 *رقم الطاولة:* ${tableNumber}\n`;
+                if (orderType === 'delivery') message += `📍 *العنوان:* ${customerInfo.address}\n`;
+                message += `\n👤 *الاسم:* ${customerInfo.name}\n`;
+                message += `📞 *رقم الهاتف:* ${customerInfo.phone}\n\n`;
 
-                const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-                
+                const mainOrders = cart.filter(i => ['nafarat', 'weight', 'sandwiches'].includes(i.categoryId));
+                const extraOrders = cart.filter(i => ['drinks', 'extras'].includes(i.categoryId));
+
+                if (mainOrders.length > 0) {
+                    message += `━━━━━━━━━━━━━━\n🍽️ *الطلبات:*\n━━━━━━━━━━━━━━\n`;
+                    mainOrders.forEach(item => {
+                        message += `▪️ *${item.name}*\n   ${item.optionName} × ${item.quantity} = ${(item.price * item.quantity).toLocaleString()} ${CURRENCY}\n`;
+                    });
+                }
+
+                if (extraOrders.length > 0) {
+                    message += `\n━━━━━━━━━━━━━━\n🥤 *الإضافات:*\n━━━━━━━━━━━━━━\n`;
+                    extraOrders.forEach(item => {
+                        message += `▫️ ${item.name} (${item.optionName}) × ${item.quantity} = ${(item.price * item.quantity).toLocaleString()} ${CURRENCY}\n`;
+                    });
+                }
+
+                message += `\n━━━━━━━━━━━━━━\n`;
+                message += `💵 *مجموع الطلب:* ${subtotal.toLocaleString()} ${CURRENCY}\n`;
+                if (orderType === 'delivery') message += `🚚 *التوصيل:* مجاني داخل الحرية\n`;
+                message += `💰 *المجموع الكلي:* ${total.toLocaleString()} ${CURRENCY}\n`;
+                message += `━━━━━━━━━━━━━━\n\n`;
+                message += `🙏 *شكراً لطلبكم من كباب الديرة*\nنتمنى لكم وجبة شهية ❤️`;
+
                 setOrderSuccess(true);
-                setCart([]); // تفريغ السلة فقط
-                
-                setTimeout(() => {
-                    window.location.href = whatsappUrl;
+                setCart([]);
+                setTimeout(() => { 
+                    window.location.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`; 
                     setOrderSuccess(false);
                     setCurrentView('categories');
-                }, 1500);
+                }, 1000);
             };
 
             return (
-                <div className="min-h-screen text-stone-900 pb-24" dir="rtl">
-                    {}
-                    <header className="sticky top-0 z-40 bg-gradient-to-r from-orange-500 via-orange-600 to-yellow-500 text-white p-4 shadow-xl flex items-center justify-between">
+                <div className="min-h-screen text-stone-900 pb-32" dir="rtl">
+                    {currentView !== 'orderType' && <header className="sticky top-0 z-[60] bg-gradient-to-r from-orange-500 to-yellow-500 text-white p-4 shadow-xl flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            {currentView !== 'categories' && (
-                                <button onClick={() => setCurrentView('categories')} className="bg-white/20 p-2 rounded-full">
-                                    <Icon name="arrow-right" className="w-5 h-5" />
-                                </button>
-                            )}
-                            <div>
-                                <h1 className="font-black text-2xl tracking-tighter">كباب الديرة</h1>
-                                <p className="text-[10px] uppercase font-bold tracking-widest opacity-80">قسم الطلبات الخارجية</p>
+                            <button onClick={() => setIsSideMenuOpen(true)} className="p-2 bg-white/20 rounded-xl"><Icon name="menu" /></button>
+                            <h1 onClick={() => setCurrentView('orderType')} className="font-black text-2xl tracking-tighter cursor-pointer">كباب الديرة</h1>
+                        </div>
+                        <button onClick={() => setCurrentView('history')} className="bg-white/20 p-3 rounded-2xl"><Icon name="history" /></button>
+                    </header>}
+
+                    {isSideMenuOpen && (
+                        <div className="fixed inset-0 z-[100] flex">
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsSideMenuOpen(false)}></div>
+                            <div className="fixed right-0 top-0 bottom-0 w-80 glass-panel shadow-2xl flex flex-col p-6 animate-in slide-in-from-right duration-300">
+                                <button onClick={() => setIsSideMenuOpen(false)} className="self-start p-2 bg-stone-100 rounded-full mb-8"><Icon name="x" className="w-5 h-5 text-stone-600" /></button>
+                                <div className="text-center mb-10">
+                                    <div className="w-20 h-20 bg-orange-500 rounded-3xl mx-auto flex items-center justify-center shadow-lg mb-4 text-white"><Icon name="flame" className="w-10 h-10" /></div>
+                                    <h2 className="text-2xl font-black text-orange-600">كباب الديرة</h2>
+                                    <p className="text-xs font-bold text-stone-400 mt-1 uppercase tracking-widest">سفري - صالة - دلفري</p>
+                                </div>
+                                <div className="space-y-6">
+                                    <button onClick={() => { setCurrentView('categories'); setIsSideMenuOpen(false); }} className="w-full flex items-center justify-between p-4 bg-orange-500 text-white rounded-2xl shadow-md active:scale-95 transition-all font-black text-sm">
+                                        <span>الواجهة الرئيسية</span>
+                                        <Icon name="home" className="w-5 h-5" />
+                                    </button>
+                                    <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
+                                        <p className="text-sm font-bold text-stone-800 flex items-center gap-2"><Icon name="map-pin" className="w-4 h-4" /> الحرية - شارع الدور</p>
+                                        <p className="text-[11px] font-bold text-stone-500 mt-1">التوصيل مجاني داخل الحرية</p>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <a href="tel:07735311855" className="flex items-center justify-between p-4 bg-white border rounded-2xl shadow-sm"><span className="text-sm font-black">07735311855</span><Icon name="phone" className="w-4 h-4 text-orange-500" /></a>
+                                        <a href="tel:07838468817" className="flex items-center justify-between p-4 bg-white border rounded-2xl shadow-sm"><span className="text-sm font-black">07838468817</span><Icon name="phone" className="w-4 h-4 text-orange-500" /></a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => setCurrentView('history')} className="bg-white/20 p-3 rounded-2xl active:scale-95 transition-transform">
-                                <Icon name="clipboard-list" className="w-6 h-6" />
-                            </button>
-                            <button onClick={() => setIsCartOpen(true)} className="relative bg-white/20 p-3 rounded-2xl active:scale-95 transition-transform">
-                                <Icon name="shopping-cart" className="w-6 h-6" />
-                                {cart.length > 0 && (
-                                    <span className="absolute -top-1 -right-1 bg-white text-orange-600 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-lg">
-                                        {cart.reduce((a, b) => a + b.quantity, 0)}
-                                    </span>
-                                )}
-                            </button>
-                        </div>
-                    </header>
+                    )}
 
                     <main className="max-w-md mx-auto p-4">
-                        {}
+                        {currentView === 'orderType' && (
+                            <div className="fixed inset-0 z-[250] bg-gradient-to-br from-orange-500 via-yellow-500 to-amber-400 flex items-center justify-center p-4" dir="rtl">
+                                <div className="w-full max-w-md min-h-[92vh] bg-white rounded-[3rem] shadow-2xl p-6 flex flex-col justify-between overflow-hidden relative">
+                                    <div className="absolute -top-20 -left-20 w-48 h-48 bg-orange-100 rounded-full opacity-70"></div>
+                                    <div className="absolute -bottom-20 -right-20 w-56 h-56 bg-yellow-100 rounded-full opacity-80"></div>
+                                    <div className="relative z-10 text-center pt-6">
+                                        <div className="w-24 h-24 mx-auto bg-orange-500 rounded-[2rem] flex items-center justify-center text-white shadow-xl mb-5">
+                                            <Icon name="flame" className="w-12 h-12" />
+                                        </div>
+                                        <h1 className="text-4xl font-black text-orange-600 leading-tight">كباب الديرة</h1>
+                                        <p className="text-stone-500 font-bold mt-2">اختر نوع الطلب للمتابعة إلى المنيو</p>
+                                    </div>
+
+                                    <div className="relative z-10 space-y-4 my-8">
+                                        {Object.entries(ORDER_TYPES).map(([key, type]) => (
+                                            <button key={key} onClick={() => handleOrderTypeChange(key)} className="w-full bg-stone-50 border-2 border-orange-100 hover:border-orange-500 active:scale-95 transition-all rounded-[2rem] p-5 flex items-center justify-between shadow-sm">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-14 h-14 bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                                                        <Icon name={type.icon} className="w-7 h-7" />
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <h2 className="font-black text-xl text-stone-900">{type.label}</h2>
+                                                        <p className="text-xs font-bold text-stone-400 mt-1">
+                                                            {key === 'dinein' && 'اختيار طاولة من 1 إلى 9'}
+                                                            {key === 'delivery' && 'توصيل مجاني داخل الحرية'}
+                                                            {key === 'takeaway' && 'استلام الطلب من المطعم'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Icon name="chevron-left" className="w-6 h-6 text-orange-500" />
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div className="relative z-10 bg-orange-50 border border-orange-100 rounded-[2rem] p-4 text-center">
+                                        <p className="text-xs font-black text-orange-700">بعد اختيار نوع الطلب سيتم فتح قائمة الطعام مباشرة</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {currentView === 'categories' && (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-xl font-black border-r-4 border-orange-500 pr-3">القائمة الرئيسية</h2>
-                                    <span className="text-xs font-bold text-orange-600 bg-orange-100 px-3 py-1 rounded-full">توصيل الحرية</span>
+                                <div className="mb-6 relative overflow-hidden rounded-[2.5rem] h-56 shadow-2xl border-4 border-white">
+                                    <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
+                                        <source src="https://player.vimeo.com/external/461245001.sd.mp4?s=6f2122650073e51f47171e5c264a7c06f3630f0f&profile_id=164&oauth2_token_id=57447761" type="video/mp4" />
+                                    </video>
+                                    <div className="absolute inset-0 hero-yellow-gradient flex flex-col justify-center items-center p-6 text-center">
+                                        <h2 className="text-4xl font-black text-white flex flex-col items-center gap-2 drop-shadow-md leading-tight">مرحباً بكم</h2>
+                                        <p className="text-2xl font-bold text-white drop-shadow-sm mt-1">في كباب الديرة</p>
+                                        <div className="bg-white/20 backdrop-blur-md px-4 py-1 rounded-full mt-4">
+                                            <p className="text-white text-[11px] font-black uppercase tracking-widest">{ORDER_TYPES[orderType].label}</p>
+                                        </div>
+                                    </div>
                                 </div>
+                                <h2 className="text-xl font-black border-r-4 border-orange-500 pr-3 mb-6">القائمة</h2>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {MENU_DATA.categories.map((cat) => (
-                                        <button key={cat.id} onClick={() => { setSelectedCategory(cat); setCurrentView('items'); }} className="bg-white rounded-[2rem] p-4 shadow-sm border border-stone-100 flex flex-col items-center text-center active:scale-95 transition-all group">
-                                            <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300">
-                                                <Icon name={cat.icon} className="w-8 h-8 text-orange-600 group-hover:text-white" />
+                                    {visibleCategories.map((cat) => (
+                                        <button key={cat.id} onClick={() => { setSelectedCategory(cat); setCurrentView('items'); }} className="bg-white rounded-[2rem] p-5 shadow-sm border border-orange-50 flex flex-col items-center text-center active:scale-95 transition-all group">
+                                            <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300">
+                                                <Icon name={cat.icon} className="w-7 h-7 text-orange-500 group-hover:text-white" />
                                             </div>
                                             <h3 className="font-bold text-sm text-stone-800">{cat.name}</h3>
                                             <p className="text-[10px] text-stone-400 mt-1">{cat.details}</p>
@@ -248,46 +411,11 @@
                             </div>
                         )}
 
-                        {}
-                        {currentView === 'history' && (
-                            <div className="animate-in fade-in slide-in-from-left-4 duration-300">
-                                <h2 className="text-2xl font-black mb-6 text-center text-orange-600">طلباتك السابقة</h2>
-                                {orderHistory.length === 0 ? (
-                                    <div className="bg-white rounded-3xl p-10 text-center text-stone-300">
-                                        <Icon name="history" className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                                        <p className="font-bold">لا توجد طلبات سابقة بعد</p>
-                                        <button onClick={() => setCurrentView('categories')} className="mt-4 text-orange-500 font-black text-sm">ابدأ الطلب الآن</button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {orderHistory.map(order => (
-                                            <div key={order.id} className="bg-white rounded-3xl p-5 shadow-sm border border-stone-100">
-                                                <div className="flex justify-between items-center mb-3 border-b border-stone-50 pb-2">
-                                                    <div className="text-[10px] font-black text-stone-400">📅 {order.date} | 🕒 {order.time}</div>
-                                                    <div className="text-orange-600 font-black text-sm">{order.total.toLocaleString()} {CURRENCY}</div>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    {order.items.map((it, idx) => (
-                                                        <div key={idx} className="text-[11px] text-stone-600 flex justify-between">
-                                                            <span>• {it.name} <span className="text-[9px] opacity-60">({it.optionName})</span></span>
-                                                            <span className="font-black">×{it.quantity}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                        <button onClick={() => { if(confirm('هل أنت متأكد من مسح السجل؟')) setOrderHistory([]); }} className="w-full text-stone-300 text-xs font-bold py-4">مسح سجل الطلبات</button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {}
                         {currentView === 'items' && selectedCategory && (
                             <div className="animate-in fade-in slide-in-from-left-4 duration-300">
-                                <div className="flex items-center gap-2 mb-6">
-                                    <button onClick={() => setCurrentView('categories')} className="text-stone-400 font-bold text-sm">الرئيسية</button>
-                                    <Icon name="chevron-right" className="w-4 h-4 text-stone-300" />
+                                <div className="flex items-center gap-2 mb-6 text-stone-400">
+                                    <button onClick={() => setCurrentView('categories')} className="font-bold text-sm underline">الرئيسية</button>
+                                    <Icon name="chevron-right" className="w-4 h-4" />
                                     <h2 className="text-lg font-black text-orange-600">{selectedCategory.name}</h2>
                                 </div>
                                 <div className="grid grid-cols-1 gap-4">
@@ -295,117 +423,146 @@
                                         <div key={item.id} onClick={() => setSelectedItem(item)} className="bg-white rounded-3xl p-5 shadow-sm border border-stone-100 flex items-center justify-between active:bg-orange-50 transition-all cursor-pointer">
                                             <div className="flex-1">
                                                 <h3 className="font-black text-lg text-stone-800">{item.name}</h3>
-                                                {item.description && <p className="text-stone-500 text-xs mt-1">{item.description}</p>}
+                                                <p className="text-stone-400 text-xs mt-1">اضغط لاختيار النوع والسعر</p>
                                             </div>
-                                            <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg shadow-orange-200"><Icon name="plus" className="w-5 h-5" /></div>
+                                            <div className="bg-orange-500 text-white p-3 rounded-2xl shadow-lg"><Icon name="plus" className="w-5 h-5" /></div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
-                        {}
                         {currentView === 'checkout' && (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                <h2 className="text-2xl font-black mb-6 text-center text-stone-800">بيانات التوصيل</h2>
+                                <h2 className="text-2xl font-black mb-6 text-center">تأكيد الطلب</h2>
                                 <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-stone-100 space-y-5">
-                                    <div className="space-y-1">
-                                        <label className="text-sm font-black mr-2 text-stone-600">الاسم الثلاثي</label>
-                                        <div className="relative">
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-500"><Icon name="user" className="w-5 h-5" /></div>
-                                            <input type="text" placeholder="مثال: علي محمد حسن" className="w-full bg-stone-50 border-2 border-stone-100 focus:border-orange-500 rounded-2xl py-4 pr-12 pl-4 outline-none transition-all font-bold text-sm" value={customerInfo.name} onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})} />
-                                        </div>
+                                    <div className="bg-orange-50 border border-orange-100 p-4 rounded-2xl text-sm font-black text-orange-700">
+                                        نوع الطلب: {ORDER_TYPES[orderType].label}
+                                        {orderType === 'dinein' && tableNumber && <span> - طاولة {tableNumber}</span>}
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-sm font-black mr-2 text-stone-600">رقم الهاتف</label>
-                                        <div className="relative">
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-500"><Icon name="phone" className="w-5 h-5" /></div>
-                                            <input type="tel" placeholder="07XXXXXXXXX" className="w-full bg-stone-50 border-2 border-stone-100 focus:border-orange-500 rounded-2xl py-4 pr-12 pl-4 outline-none transition-all font-bold text-sm" value={customerInfo.phone} onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})} />
+                                    <input type="text" placeholder="الاسم الكامل" className="w-full bg-stone-50 border-2 border-stone-100 rounded-2xl py-4 px-6 outline-none font-bold focus:border-orange-500" value={customerInfo.name} onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})} />
+                                    <input type="tel" placeholder="رقم الهاتف" className="w-full bg-stone-50 border-2 border-stone-100 rounded-2xl py-4 px-6 outline-none font-bold focus:border-orange-500" value={customerInfo.phone} onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})} />
+                                    {orderType === 'delivery' && (
+                                        <textarea placeholder="العنوان بالتفصيل داخل الحرية" className="w-full bg-stone-50 border-2 border-stone-100 rounded-2xl py-4 px-6 outline-none h-32 font-bold focus:border-orange-500" value={customerInfo.address} onChange={(e) => setCustomerInfo({...customerInfo, address: e.target.value})} />
+                                    )}
+                                    {orderType === 'dinein' && (
+                                        <div className="p-4 bg-orange-50 rounded-2xl">
+                                            <p className="text-xs font-black text-orange-700 mb-3">رقم الطاولة مطلوب:</p>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {[1,2,3,4,5,6,7,8,9].map(num => <button key={num} onClick={() => setTableNumber(String(num))} className={`py-3 rounded-xl font-black border-2 ${tableNumber === String(num) ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-stone-700 border-orange-100'}`}>طاولة {num}</button>)}
+                                            </div>
                                         </div>
+                                    )}
+                                    <div className="space-y-2 bg-stone-50 p-4 rounded-2xl font-black text-sm">
+                                        <div className="flex justify-between"><span>مجموع الطلب</span><span>{subtotal.toLocaleString()} {CURRENCY}</span></div>
+                                        {orderType === 'delivery' && <div className="flex justify-between text-green-700"><span>أجور التوصيل</span><span>{deliveryFee.toLocaleString()} {CURRENCY}</span></div>}
+                                        <div className="flex justify-between text-xl text-orange-600 border-t pt-3"><span>الكلي</span><span>{total.toLocaleString()} {CURRENCY}</span></div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-sm font-black mr-2 text-stone-600">العنوان بالتفصيل</label>
-                                        <div className="relative">
-                                            <div className="absolute right-4 top-4 text-orange-500"><Icon name="map-pin" className="w-5 h-5" /></div>
-                                            <textarea placeholder="الزقاق، رقم الدار، أقرب نقطة دالة..." className="w-full bg-stone-50 border-2 border-stone-100 focus:border-orange-500 rounded-2xl py-4 pr-12 pl-4 outline-none transition-all h-32 font-bold text-sm" value={customerInfo.address} onChange={(e) => setCustomerInfo({...customerInfo, address: e.target.value})} />
-                                        </div>
-                                    </div>
-                                    <button onClick={sendToWhatsApp} className="w-full bg-green-600 hover:bg-green-700 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-green-100 active:scale-95 transition-all">إرسال الطلب (واتساب)<Icon name="send" className="w-5 h-5" /></button>
+                                    <button onClick={sendToWhatsApp} className="w-full bg-green-600 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl">إرسال الطلب عبر واتساب <Icon name="send" /></button>
+                                    <button onClick={() => setCurrentView('categories')} className="w-full bg-orange-50 text-orange-600 font-black py-4 rounded-2xl flex items-center justify-center gap-2 border-2 border-orange-100">إضافة طلبات أخرى</button>
                                 </div>
+                            </div>
+                        )}
+
+                        {currentView === 'history' && (
+                            <div className="animate-in fade-in duration-300">
+                                <div className="flex items-center gap-2 mb-6">
+                                    <button onClick={() => setCurrentView('categories')} className="bg-stone-200 p-2 rounded-xl"><Icon name="chevron-right" /></button>
+                                    <h2 className="text-2xl font-black text-orange-600">طلباتك السابقة</h2>
+                                </div>
+                                {orderHistory.length === 0 ? <p className="text-center text-stone-400 mt-10">لا يوجد سجل طلبات</p> : 
+                                    orderHistory.map(order => (
+                                        <div key={order.id} className="bg-white rounded-3xl p-5 shadow-sm border border-orange-100 mb-4">
+                                            <div className="flex justify-between items-center mb-2 border-b pb-2"><span className="text-[10px] font-black text-stone-400">#{order.id} | {order.date}</span><span className="text-orange-600 font-black text-sm">{(order.total || order.subtotal || 0).toLocaleString()} {CURRENCY}</span></div>
+                                            <p className="text-[11px] font-black text-stone-500 mb-2">{ORDER_TYPES[order.orderType || 'takeaway'].label}{order.tableNumber ? ` - طاولة ${order.tableNumber}` : ''}</p>
+                                            {order.items.map((it, idx) => <div key={idx} className="text-[11px] text-stone-600 flex justify-between"><span>• {it.name}</span><span>×{it.quantity}</span></div>)}
+                                        </div>
+                                    ))
+                                }
                             </div>
                         )}
                     </main>
 
-                    {}
-                    {orderSuccess && (
-                        <div className="fixed inset-0 z-[100] bg-green-600 success-overlay flex flex-col items-center justify-center text-white p-10 text-center">
-                            <div className="bg-white/20 p-6 rounded-full mb-6 animate-bounce"><Icon name="check-circle" className="w-20 h-20" /></div>
-                            <h2 className="text-3xl font-black mb-2">تم الحفظ والإرسال!</h2>
-                            <p className="text-lg opacity-90 font-bold">تمت إضافة الطلب لسجلك.. جارِ التحويل</p>
-                        </div>
-                    )}
-
-                    {}
                     {selectedItem && (
-                        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm px-0 transition-opacity">
-                            <div className="bg-white w-full max-w-md rounded-t-[3rem] p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl">
+                        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 backdrop-blur-sm">
+                            <div className="absolute inset-0" onClick={() => setSelectedItem(null)}></div>
+                            <div className="relative bg-white w-full max-w-md rounded-t-[3rem] p-8 animate-in slide-in-from-bottom duration-300">
                                 <div className="w-16 h-1.5 bg-stone-200 rounded-full mx-auto mb-8"></div>
                                 <div className="flex justify-between items-start mb-8">
-                                    <div><h3 className="text-3xl font-black text-stone-900">{selectedItem.name}</h3><p className="text-stone-400 font-bold mt-1">اختر النوع أو الكمية:</p></div>
-                                    <button onClick={() => setSelectedItem(null)} className="bg-stone-100 p-3 rounded-2xl"><Icon name="x" className="w-6 h-6 text-stone-600" /></button>
+                                    <div><h3 className="text-3xl font-black text-stone-900">{selectedItem.name}</h3><p className="text-xs font-bold text-stone-400 mt-1">اختر النوع والكمية</p></div>
+                                    <button onClick={() => setSelectedItem(null)} className="bg-stone-100 p-3 rounded-2xl"><Icon name="x" /></button>
                                 </div>
-                                <div className="space-y-3 max-h-[50vh] overflow-y-auto pb-10">
+                                <div className="space-y-3 max-h-[50vh] overflow-y-auto pb-4">
                                     {selectedItem.options.map(option => (
-                                        <button key={option.id} onClick={() => addToCart(selectedItem, option)} className="w-full flex justify-between items-center p-6 bg-stone-50 hover:bg-orange-50 border-2 border-transparent hover:border-orange-100 rounded-[1.5rem] group transition-all active:scale-[0.98]">
-                                            <span className="font-black text-lg group-hover:text-orange-600">{option.name}</span>
-                                            <div className="flex items-center gap-3">
-                                                <span className="bg-orange-100 text-orange-700 px-4 py-2 rounded-xl font-black text-sm">{option.price.toLocaleString()} {CURRENCY}</span>
-                                                <div className="bg-orange-500 text-white p-1 rounded-lg shadow-sm"><Icon name="plus" className="w-5 h-5" /></div>
-                                            </div>
+                                        <button key={option.id} onClick={() => addToCart(selectedItem, option)} className={`w-full flex justify-between items-center p-6 bg-stone-50 border-2 rounded-[1.5rem] transition-all ${lastAddedId === option.id ? 'border-orange-500 bg-orange-50 add-item-pop' : 'border-transparent'}`}>
+                                            <span className="font-black text-lg">{option.name} {lastAddedId === option.id && '✓'}</span>
+                                            <span className="bg-orange-100 text-orange-700 px-4 py-2 rounded-xl font-black text-sm">{option.price.toLocaleString()} {CURRENCY}</span>
                                         </button>
                                     ))}
                                 </div>
+                                <button onClick={() => setSelectedItem(null)} className="w-full mt-2 bg-orange-600 text-white font-black py-5 rounded-[1.5rem]">إغلاق القائمة</button>
                             </div>
                         </div>
                     )}
 
-                    {}
-                    {isCartOpen && (
-                        <div className="fixed inset-0 z-50 overflow-hidden">
-                            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsCartOpen(false)}></div>
-                            <div className="absolute left-0 top-0 bottom-0 w-full max-w-sm bg-white shadow-2xl flex flex-col animate-in slide-in-from-left duration-300">
-                                <div className="p-6 border-b flex justify-between items-center bg-stone-50">
-                                    <h2 className="text-xl font-black flex items-center gap-2 text-orange-600"><Icon name="shopping-cart" /> سلة المشتريات</h2>
-                                    <button onClick={() => setIsCartOpen(false)} className="p-2 bg-stone-200/50 rounded-xl"><Icon name="x" /></button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                                    {cart.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-stone-300">
-                                            <Icon name="package" className="w-20 h-20 mb-4 opacity-20" />
-                                            <p className="font-bold">السلة فارغة حالياً</p>
-                                        </div>
-                                    ) : (
-                                        cart.map(item => (
-                                            <div key={item.cartId} className="flex items-center gap-4 bg-white p-4 rounded-2xl border-2 border-stone-50 shadow-sm">
-                                                <div className="flex-1"><h4 className="font-black text-sm text-stone-800">{item.name}</h4><p className="text-[10px] text-orange-600 font-black">{item.optionName}</p><p className="text-xs text-stone-400 mt-1 font-bold">{(item.price * item.quantity).toLocaleString()} {CURRENCY}</p></div>
-                                                <div className="flex items-center gap-3 bg-stone-100 p-2 rounded-xl">
-                                                    <button onClick={() => updateQuantity(item.cartId, -1)} className="p-1 text-orange-600 bg-white rounded-lg shadow-sm"><Icon name="minus" className="w-4 h-4" /></button>
-                                                    <span className="font-black text-sm min-w-[20px] text-center">{item.quantity}</span>
-                                                    <button onClick={() => updateQuantity(item.cartId, 1)} className="p-1 text-orange-600 bg-white rounded-lg shadow-sm"><Icon name="plus" className="w-4 h-4" /></button>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                                {cart.length > 0 && (
-                                    <div className="p-8 border-t bg-stone-50 space-y-4 font-bold">
-                                        <div className="flex justify-between text-xs text-stone-500"><span>المجموع الفرعي:</span><span>{subtotal.toLocaleString()} {CURRENCY}</span></div>
-                                        <div className="flex justify-between text-xs text-green-600"><span>أجور التوصيل:</span><span>{DELIVERY_FEE.toLocaleString()} {CURRENCY}</span></div>
-                                        <div className="flex justify-between text-2xl text-orange-600 border-t pt-4"><span>الإجمالي:</span><span>{total.toLocaleString()} {CURRENCY}</span></div>
-                                        <button onClick={() => { setIsCartOpen(false); setCurrentView('checkout'); }} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-orange-100 active:scale-95 transition-all">إتمام الطلب</button>
+                    {cart.length > 0 && !isCartOpen && currentView !== 'checkout' && (
+                        <div className="fixed bottom-0 left-0 right-0 z-[70] p-4 bg-white/80 backdrop-blur-md cart-bar-shadow border-t animate-in slide-in-from-bottom duration-300">
+                            <div className="max-w-md mx-auto flex items-center justify-between bg-gradient-to-r from-orange-600 to-yellow-500 p-4 rounded-[2rem] text-white shadow-2xl cursor-pointer" onClick={() => setIsCartOpen(true)}>
+                                <div className="flex items-center gap-4">
+                                    <div className="relative bg-white/20 p-3 rounded-2xl animate-bounce-subtle">
+                                        <Icon name="shopping-cart" className="w-6 h-6" />
+                                        <span className="absolute -top-1 -right-1 bg-white text-orange-600 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full">{cart.reduce((a, b) => a + b.quantity, 0)}</span>
                                     </div>
-                                )}
+                                    <div>
+                                        <p className="text-xl font-black">{total.toLocaleString()} {CURRENCY}</p>
+                                        {orderType === 'delivery' && <p className="text-[10px] font-bold opacity-90">شامل التوصيل</p>}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 font-black text-sm bg-white/20 px-4 py-2 rounded-xl">عرض السلة <Icon name="chevron-left" className="w-4 h-4" /></div>
                             </div>
+                        </div>
+                    )}
+
+                    {isCartOpen && (
+                        <div className="fixed inset-0 z-[120]">
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsCartOpen(false)}></div>
+                            <div className="absolute left-0 right-0 bottom-0 top-12 bg-white rounded-t-[3.5rem] flex flex-col animate-in slide-in-from-bottom duration-500">
+                                <div className="w-16 h-1.5 bg-stone-200 rounded-full mx-auto my-6"></div>
+                                <div className="px-8 pb-6 border-b flex justify-between items-center text-orange-600">
+                                    <h2 className="text-2xl font-black flex items-center gap-3"><Icon name="shopping-cart" className="w-8 h-8" /> سلة طلباتك</h2>
+                                    <button onClick={() => setIsCartOpen(false)} className="bg-stone-100 p-3 rounded-2xl"><Icon name="x" className="w-6 h-6 text-stone-600" /></button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                    {cart.map(item => (
+                                        <div key={item.cartId} className="flex items-center gap-4 bg-stone-50 p-5 rounded-[2rem] border-2 border-stone-100">
+                                            <div className="flex-1"><h4 className="font-black text-lg">{item.name}</h4><p className="text-sm text-orange-600 font-bold">{item.optionName}</p></div>
+                                            <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border">
+                                                <button onClick={() => updateQuantity(item.cartId, -1)} className="p-2 text-orange-600 bg-orange-50 rounded-xl"><Icon name="minus" /></button>
+                                                <span className="font-black text-lg">{item.quantity}</span>
+                                                <button onClick={() => updateQuantity(item.cartId, 1)} className="p-2 text-orange-600 bg-orange-50 rounded-xl"><Icon name="plus" /></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="p-8 bg-stone-50 rounded-t-[3rem] space-y-4 shadow-inner">
+                                    <div className="flex justify-between items-center text-sm font-black"><span>نوع الطلب:</span><span className="text-orange-600">{ORDER_TYPES[orderType].label}</span></div>
+                                    <div className="flex justify-between items-center text-sm font-black"><span>مجموع الطلب:</span><span>{subtotal.toLocaleString()} {CURRENCY}</span></div>
+                                    {orderType === 'delivery' && <div className="flex justify-between items-center text-sm font-black text-green-700"><span>أجور التوصيل:</span><span>{deliveryFee.toLocaleString()} {CURRENCY}</span></div>}
+                                    <div className="flex justify-between items-center text-3xl text-orange-600 border-t border-stone-200 pt-6">
+                                        <span className="font-black">الإجمالي:</span>
+                                        <span className="font-black">{total.toLocaleString()} {CURRENCY}</span>
+                                    </div>
+                                    <button onClick={() => { setIsCartOpen(false); setCurrentView('checkout'); }} className="w-full bg-orange-600 text-white font-black py-6 rounded-[2rem] shadow-xl text-xl flex items-center justify-center gap-3">تأكيد الطلب <Icon name="arrow-left" /></button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {orderSuccess && (
+                        <div className="fixed inset-0 z-[200] bg-green-600 flex flex-col items-center justify-center text-white p-10 text-center">
+                            <div className="bg-white/20 p-6 rounded-full mb-6 animate-bounce"><Icon name="check-circle" className="w-20 h-20" /></div>
+                            <h2 className="text-3xl font-black mb-2">تم تجهيز طلبك!</h2>
+                            <p className="text-lg font-bold opacity-90">جاري تحويلك للواتساب...</p>
                         </div>
                     )}
                 </div>
